@@ -18,6 +18,23 @@ These policies are defined at the API level
               }</set-body>
 				</return-response>
 			</when>
+			<!-- Assuming model and deployment name are same -->
+            <when condition="@( ((string)context.Variables["deployment"]).Trim().ToLower() !="gpt-35-turbo" && ((string)context.Variables["deployment"]).Trim().ToLower() !="gpt-35-turbo-16k" )">
+                <return-response>
+                    <set-status code="500" reason="Invalid model" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-body>{
+                                "error": "Model type not supported."
+                    }</set-body>
+                </return-response>
+            </when>
+            <otherwise>
+                <set-query-parameter name="api-version" exists-action="skip">
+                    <value>2023-05-15</value>
+                </set-query-parameter>
+            </otherwise>
 			<otherwise>
 				<set-query-parameter name="api-version" exists-action="skip">
 					<value>2023-05-15</value>
@@ -65,8 +82,47 @@ These policies are defined at the API level
 		<!-- End: Load balancing -->
 	</inbound>
 	<backend>
-		<!-- Forwards the incoming request to the backend while buffering the request body.-->
-		<forward-request buffer-request-body="true" />
+		<!-- Exponential retries 
+			retry logic based on response status codes and conditional routing of requests 
+			to different backend services (oai-gateway-sample and oai-gateway-sample2) 
+			based on an internal counter variable backend-counter-->
+        <retry condition="@(context.Response.StatusCode >= 300)" count="3" interval="1" max-interval="10" delta="1">
+        <!-- Checks if the response status code is 300 or greater -->
+        <choose>
+            <!-- Handles responses with status codes 300 or greater -->
+            <when condition="@(context.Response != null && (context.Response.StatusCode >= 300))">
+                <!-- Conditional routing based on the backend-counter variable -->
+                <choose>
+                    <!-- Condition for odd backend-counter -->
+                    <when condition="@(int.Parse((string)context.Variables["backend-counter"]) % 2==1)">
+                        <!-- Sets the backend service, updates backend-counter for odd values -->
+                        <set-backend-service backend-id="oai-gateway-sample2" />
+                        <set-variable name="backend-counter" value="2" />
+                        <cache-store-value key="backend-counter" value="2" duration="100" />
+                        <set-variable name="OpenAI-Instance-Invoked" value="oai-gateway-sample2" />
+                    </when>
+                    <!-- Condition for even backend-counter -->
+                    <when condition="@(int.Parse((string)context.Variables["backend-counter"]) % 2==0)">
+                        <!-- Sets the backend service, updates backend-counter for even values -->
+                        <set-backend-service backend-id="oai-gateway-sample" />
+                        <set-variable name="backend-counter" value="1" />
+                        <cache-store-value key="backend-counter" value="1" duration="100" />
+                        <set-variable name="OpenAI-Instance-Invoked" value="oai-gateway-sample" />
+                    </when>
+                    <!-- Default behavior if backend-counter is not odd or even -->
+                    <otherwise>
+                        <!-- Sets the backend service, sets backend-counter to a default value -->
+                        <set-backend-service backend-id="oai-gateway-sample" />
+                        <set-variable name="backend-counter" value="1" />
+                        <cache-store-value key="backend-counter" value="1" duration="100" />
+                        <set-variable name="OpenAI-Instance-Invoked" value="oai-gateway-sample" />
+                    </otherwise>
+                </choose>
+            </when>
+        </choose>
+        <!-- Forwards the incoming request to the backend while buffering the request body -->
+        <forward-request timeout="120" fail-on-error-status-code="true" buffer-response="false" />
+    </retry>
 	</backend>
 	<outbound>
 		<base />
