@@ -1,5 +1,5 @@
 <!--
-
+	These policies are defined at a Product level - the product being a Batch processor
 -->
 <policies>
 	<inbound>
