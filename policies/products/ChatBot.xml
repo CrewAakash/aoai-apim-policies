@@ -9,14 +9,14 @@ These policies are defined at a Product level - the product being a chatbot
 		<choose>
 			<when condition="@(context.Subscription.Id == "chatbot-mobile")">
 				<!-- Rate limit by TPM 
-				Each subscription has it's own TPM counter ('chatbot-mobileTPM' in this case) that tracks total tokens used per request. 
+				Each subscription has its own TPM counter ('chatbot-mobileTPM' in this case) that tracks total tokens used per request. 
 				If the response status is 200, the counter increases by the token count obtained in the response body. 
 				If the counter hits the 500 TPM limit within 60 seconds, the request will not be forwarded to the backend.
 				Clients recieve 429 as the response status code.
 				 -->
 				<rate-limit-by-key calls="500" renewal-period="60" counter-key="@(String.Concat(context.Subscription.Id,"TPM"))" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" increment-count="@(context.Response.Body.As<JObject>(true).SelectToken("usage.total_tokens").ToObject<int>())" remaining-calls-header-name="remainingTPM" total-calls-header-name="totalTPM" />
 				<!-- Rate limit by RPM
-				Each subscription has it's own RPM counter ('chatbot-mobileRPM' in this case) that tracks total requests per minute.
+				Each subscription has its own RPM counter ('chatbot-mobileRPM' in this case) that tracks total requests per minute.
 				If the response status is 200, the counter increases by 1.
 				If the counter hits the 3 RPM limit within 60 seconds, the request will not be forwarded to the backend.
 				Clients recieve 429 as the response status code.
