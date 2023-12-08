@@ -1,0 +1,107 @@
+<!--
+	These policies are defined at a Product level - the product being a Batch processor
+-->
+<policies>
+	<inbound>
+		<base />
+		<!--Priority Management Based on Subscription Keys:
+			For a specific subscription named "batch-process":
+
+			Sets rate limits for transactions per second (TPM) and transactions per minute (RPM).
+			Defines a "BusinessUnitName" variable as "DSOfflineApp".
+			Applies a quota based on the subscription for successful responses.
+			For any other subscriptions:
+
+			Sets a lower rate limit for both TPM and RPM.
+			Sets the "BusinessUnitName" variable as "OtherSmallProducts".
+			Applies a different quota based on the subscription for successful responses. -->
+		<choose>
+			<when condition="@(context.Subscription.Name == "batch-process")">
+				<!-- Rate limit by TPM -->
+				<rate-limit-by-key calls="500" renewal-period="60" counter-key="@(String.Concat(context.Subscription.Id,"TPM"))" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" increment-count="@(context.Response.Body.As<JObject>(true).SelectToken("usage.total_tokens").ToObject<int>())" remaining-calls-header-name="remainingTPM" total-calls-header-name="totalTPM" />
+				<!-- Rate limit by RPM -->
+				<rate-limit-by-key calls="3" renewal-period="60" counter-key="@(String.Concat(context.Subscription.Id,"RPM"))" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" remaining-calls-header-name="remainingRPM" total-calls-header-name="totalRPM" />
+				<set-variable name="BusinessUnitName" value="DSOfflineApp" />
+				<quota-by-key calls="100" renewal-period="300" counter-key="@(context.Subscription.Id)" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" />
+			</when>
+			<otherwise>
+				<rate-limit-by-key calls="5" renewal-period="60" counter-key="@(context.Subscription.Id)" />
+				<set-variable name="BusinessUnitName" value="OtherSmallProducts" />
+				<quota-by-key calls="100" renewal-period="3600" counter-key="@(context.Subscription.Id)" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" />
+			</otherwise>
+		</choose>
+	</inbound>
+	<backend>
+		<!--The backend section inherits the base behavior without additional policies.-->
+		<base />
+	</backend>
+	<outbound>
+		<base />
+		<!--Setting Response Headers:
+			Appends a header named "x-gateway-id" with the value from the context's deployment gateway ID.-->
+		<set-header name="x-gateway-id" exists-action="append">
+			<value>@(context.Deployment.Gateway.Id)</value>
+		</set-header>
+		<choose>
+			<!--Chargeback model using eventhub logging 
+				Conditional Logging to EventHub:
+				Logs specific information to an EventHub if the response status code is 200.
+				Captures various request and response details like service name, gateway ID, request ID, operation name, subscription ID, product ID, business unit name, invoked OpenAI instance, and total tokens used.-->
+			<when condition="@(context.Response.StatusCode == 200)">
+				<log-to-eventhub logger-id="apim-eh-logger">@{
+                    return new JObject(
+                        new JProperty("Type", "Message"),
+                        new JProperty("EventTime", DateTime.UtcNow.ToString()),
+                        new JProperty("ServiceName", context.Deployment.ServiceName),
+                        new JProperty("GatewayId", context.Deployment.Gateway.Id),
+                        new JProperty("RequestId", context.RequestId),
+                        new JProperty("RequestIp", context.Request.IpAddress),
+                        new JProperty("OperationName", context.Operation.Name),
+                        new JProperty("SubscriptionId", context.Subscription.Id),
+                        new JProperty("ProductId", context.Product.Id),
+                        new JProperty("BusinessUnitName", context.Variables["BusinessUnitName"]),
+                        new JProperty("OpenAIInstanceInvoked", context.Variables["OpenAI-Instance-Invoked"]),
+                        new JProperty("TotalTokens",  context.Response.Body.As&lt;JObject&gt;(preserveContent: true).SelectToken("usage.total_tokens").ToString())
+                    ).ToString();
+                }</log-to-eventhub>
+			</when>
+		</choose>
+		<choose>
+			<when condition="@(context.Response.StatusCode == 200)">
+				<!-- NOTE that we are using preserveContent=true when deserializing response body stream into a JSON object since we intend to access it again. See details on htTPM://docs.microsoft.com/en-us/azure/api-management/api-management-transformation-policies#SetBody -->
+				<!--Response Modification:
+					Checks if the response status code is 200.
+					Converts the response body into a JSON object to be returned as a string.-->
+				<set-body>@{                   
+                JObject api_response = context.Response.Body.As&lt;JObject&gt;(preserveContent: true);                
+                return api_response.ToString();                         
+                }</set-body>
+			</when>
+		</choose>
+	</outbound>
+	<on-error>
+		<base />
+		<choose>
+			<when condition="@(context.LastError != null && context.Response.StatusCode == 429 )">
+				<!--Logging Rate Limit Errors:
+					Logs rate limit errors (429 status code) to an EventHub for downstream processing.
+					Captures error details such as error message, reason, timestamp, service name, gateway ID, request ID, operation name, subscription ID, and product ID. -->
+				<log-to-eventhub logger-id="apim-eh-logger">@{
+                        return new JObject(
+                            new JProperty("Type", "Error"),
+                            new JProperty("ErrorMessage", context.LastError.Message),
+                            new JProperty("ErrorReason", context.LastError.Reason),
+                            new JProperty("EventTime", DateTime.UtcNow.ToString()),
+                            new JProperty("ServiceName", context.Deployment.ServiceName),
+                            new JProperty("GatewayId", context.Deployment.Gateway.Id),
+                            new JProperty("RequestId", context.RequestId),
+                            new JProperty("RequestIp", context.Request.IpAddress),
+                            new JProperty("OperationName", context.Operation.Name),
+                            new JProperty("SubscriptionId", context.Subscription.Id),
+                            new JProperty("ProductId", context.Product.Id)
+                        ).ToString();
+                    }</log-to-eventhub>
+			</when>
+		</choose>
+	</on-error>
+</policies>

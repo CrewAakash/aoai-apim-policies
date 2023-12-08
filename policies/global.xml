@@ -1,0 +1,10 @@
+<!--
+   Default policy common for all API operations and products.
+-->
+<policies>
+	<inbound />
+	<backend>
+		<forward-request />
+	</backend>
+	<outbound />
+</policies>
