@@ -19,7 +19,7 @@ These policies are defined at the API level
 				</return-response>
 			</when>
 			<!-- Assuming model and deployment name are same -->
-            <when condition="@( ((string)context.Variables["deployment"]).Trim().ToLower() !="gpt-35-turbo" && ((string)context.Variables["deployment"]).Trim().ToLower() !="gpt-35-turbo-16k" )">
+            <when condition="@( ((string)context.Variables["deployment"]).Trim().ToLower() !="gpt-35-turbo" && ((string)context.Variables["deployment"]).Trim().ToLower() !="gpt-35-turbo-2" )">
                 <return-response>
                     <set-status code="500" reason="Invalid model" />
                     <set-header name="Content-Type" exists-action="override">

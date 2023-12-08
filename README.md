@@ -1,12 +1,14 @@
 # Azure OpenAI APIM Policies
 
-This repository encompasses a set of APIM (Azure API Management) policies aimed at enhancing various aspects of API management, including:
+The repository includes a collection of Azure API Management (APIM) policy samples aiming for improving interactions with Azure OpenAI Service.
 
-1. **Load Balancing:** Ensuring efficient distribution of traffic across multiple backend services.
-2. **Keyless Authentication:** Authentication mechanisms that don't rely on API keys for access.
-3. **Model Validation and API Versioning:** Validate the model name  the API version.
+These samples focus on providing a head start for implementing key aspects as mentioned below.
+
+1. **Load Balancing:** Ensuring efficient round robin based distribution of traffic across multiple backend services.
+2. **Keyless Authentication:** Authentication mechanisms that don't rely on AOAI  keys for access.
+3. **Request Validation and API Versioning:** Validate the model name  the API version.
 3. **Retry with exponential backoff:** Retry logic based on response status codes and conditional routing of requests 
-3. **Priority Management Based on Subscription Keys:** Controlling access and resources based on subscription priority.
+3. **Priority Management Based on Subscription Keys and Quota Allocation:** Controlling access and resources allocation based on subscription priority.
 4. **Event Hub Logging:** Logging events for monitoring and analytics.
 
 ## Scope and Structure

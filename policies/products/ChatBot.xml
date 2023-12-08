@@ -38,6 +38,18 @@ These policies are defined at a Product level - the product being a chatbot
 				<set-variable name="BusinessUnitName" value="OtherSmallProducts" />
 				<quota-by-key calls="100" renewal-period="3600" counter-key="@(context.Subscription.Id)" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" />
 			</otherwise>
+			<!--This policy returns a word count in the prompt. This word count can be used to
+			do a calculation of number of tokens in the prompt. This can be used to approximately calculate the
+			number of tokens in the input prompt. -->
+			<set-variable name="wordCount" exists-action="override">
+            <value>@{JObject inBody = context.Request.Body.As<JObject>(); 
+            var inputJson = JObject.Parse(inBody.ToString());
+            var prompt = inputJson["prompt"];
+            var builder = new StringBuilder(prompt.ToString());
+            IEnumerable<string> words = builder.ToString().Split(' ');
+            return words.Count().ToString();
+        	}</value>
+			</set-variable>
 		</choose>
 	</inbound>
 	<backend>
