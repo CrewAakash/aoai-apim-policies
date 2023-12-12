@@ -10,6 +10,7 @@ These samples focus on providing a head start for implementing key aspects as me
 3. **Retry with exponential backoff:** Retry logic based on response status codes and conditional routing of requests 
 3. **Priority Management Based on Subscription Keys and Quota Allocation:** Controlling access and resources allocation based on subscription priority.
 4. **Event Hub Logging:** Logging events for monitoring and analytics.
+5. **Circuit Breaker:** Temporarily halting subsequent requests upon error.
 
 ## Scope and Structure
 
@@ -20,4 +21,4 @@ These policies are implemented at both the product and API levels, catering to s
 ### Products Defined
 - **Chatbot:** Assigned a high-priority status due to the expectation of a high request volume per minute.
 - **BatchProcessor:** Identified as a low-priority product with a lower request per minute (RPM) count.
-
+- **SimpleCircuitBreaker:** Demonstrates a simple circuit breaker pattern.
