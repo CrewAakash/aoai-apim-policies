@@ -11,6 +11,7 @@ These samples focus on providing a head start for implementing key aspects as me
 3. **Priority Management Based on Subscription Keys and Quota Allocation:** Controlling access and resources allocation based on subscription priority.*
 4. **Event Hub Logging:** Logging events for monitoring and analytics.
 5. **Circuit Breaker:** Temporarily halting subsequent requests upon error.
+6. **Adaptive Rate Limiting:**  Adaptive rate limiting dynamically adjusts rate limits based on overall quota consumption. Services with lower usage leave unused quotas for others, ensuring smoother functioning by reallocating resources as needed.
 
 ## Scope and Structure
 
