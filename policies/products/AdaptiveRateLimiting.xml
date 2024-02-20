@@ -1,0 +1,34 @@
+<!--
+    The provided code snippet implements adaptive rate limiting by dynamically 
+    adjusting the rate limits based on the overall quota consumption across different services.
+    The rate limit is adjusted dynamically based on the usage of a shared resource (usage.total_tokens) retrieved 
+    from the response body of the request.
+    This global rate limit serves as the overall quota allocation for all services.
+    The rate limit for this service is set dynamically based on the current global limit and the remaining quota (globalRemainingTokens). 
+    If there are unused quotas from other services, this high-priority service can utilize a portion of them.
+    Services that require more quota for smoother functioning can benefit from the adaptive rate limiting mechanism 
+    by utilizing unused quotas from other services, thereby ensuring effective resource allocation and smoother operation 
+    of the entire system.
+-->>
+
+<inbound>
+        <base />
+        <!-- Global rate limit bucket -->
+        <rate-limit-by-key calls="5000" renewal-period="60" counter-key="GlobalTPSLimit" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" increment-count="@(context.Response.Body.As<JObject>(true).SelectToken("usage.total_tokens").ToObject<int>())" remaining-calls-variable-name="globalRemainingTokens" remaining-calls-header-name="globalRemainingTokens" total-calls-header-name="globalTotalTokens" />
+        <!-- Priority management based on subscription keys -->
+        <choose>
+            <when condition="@(context.Subscription.Name == "AOAILimitHigh")">               
+                <!-- Use case rate limit -->
+                <rate-limit-by-key calls="@{
+                var defaultCustomerTokens = 1000;
+                if (context.Variables["globalRemainingTokens"] is int globalRemainingTokens && globalRemainingTokens > 0)
+                {
+                    defaultCustomerTokens += (int)(globalRemainingTokens * 0.1); // + additional 10% of remaining global limit
+                }
+                return defaultCustomerTokens;
+                }" renewal-period="60" counter-key="AOAILimitHighTokenConsumers" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" increment-count="@(context.Response.Body.As<JObject>(true).SelectToken("usage.total_tokens").ToObject<int>())" remaining-calls-variable-name="remainingTokensAOAIHigh" remaining-calls-header-name="remainingTokensAOAIHigh" total-calls-header-name="totalTokensAOAIHigh" />
+                <rate-limit-by-key calls="100" renewal-period="60" counter-key="@(String.Concat(context.Subscription.Id,"rps"))" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" remaining-calls-header-name="remainingRPS" total-calls-header-name="totalRPS" />
+                <set-variable name="BusinessUnitName" value="EnterpriseEndUserChatBot" />
+            </when>
+        </choose>
+</inbound>

@@ -8,7 +8,7 @@ These samples focus on providing a head start for implementing key aspects as me
 2. **Keyless Authentication:** Authentication mechanisms that don't rely on AOAI  keys for access.
 3. **Request Validation and API Versioning:** Validate the model name  the API version.
 3. **Retry with exponential backoff:** Retry logic based on response status codes and conditional routing of requests 
-3. **Priority Management Based on Subscription Keys and Quota Allocation:** Controlling access and resources allocation based on subscription priority.
+3. **Priority Management Based on Subscription Keys and Quota Allocation:** Controlling access and resources allocation based on subscription priority.*
 4. **Event Hub Logging:** Logging events for monitoring and analytics.
 5. **Circuit Breaker:** Temporarily halting subsequent requests upon error.
 
@@ -22,3 +22,5 @@ These policies are implemented at both the product and API levels, catering to s
 - **Chatbot:** Assigned a high-priority status due to the expectation of a high request volume per minute.
 - **BatchProcessor:** Identified as a low-priority product with a lower request per minute (RPM) count.
 - **SimpleCircuitBreaker:** Demonstrates a simple circuit breaker pattern.
+
+Note* - The rate limiting policy is not applied when the response is consumed within the inbound process. For the rate limit poly to be effective, the response has to be consumed in the outbound process. 
