@@ -23,4 +23,4 @@ These policies are implemented at both the product and API levels, catering to s
 - **BatchProcessor:** Identified as a low-priority product with a lower request per minute (RPM) count.
 - **SimpleCircuitBreaker:** Demonstrates a simple circuit breaker pattern.
 
-Note* - The rate limiting policy is not applied when the response is consumed within the inbound process. For the rate limit poly to be effective, the response has to be consumed in the outbound process. 
+Note* - The rate limiting policy is not applied when the response is consumed within the inbound process. For the rate limit policy to be effective, the response has to be consumed in the outbound process. 
