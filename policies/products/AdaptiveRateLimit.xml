@@ -4,30 +4,39 @@
 <policies>
 	<inbound>
 		<base />
-		<!--Priority Management Based on Subscription Keys:
-			For a specific subscription named "batch-process":
-
-			Sets rate limits for transactions per second (TPM) and transactions per minute (RPM).
-			Defines a "BusinessUnitName" variable as "DSOfflineApp".
-			Applies a quota based on the subscription for successful responses.
-			For any other subscriptions:
-
-			Sets a lower rate limit for both TPM and RPM.
-			Sets the "BusinessUnitName" variable as "OtherSmallProducts".
-			Applies a different quota based on the subscription for successful responses. -->
+		<base />
+        <!-- Global token rate limit governing the overall token allocation acorss all use cases -->
+        <rate-limit-by-key calls="5000" renewal-period="60" counter-key="GlobalTokensLimit" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" increment-count="@(context.Response.Body.As<JObject>(true).SelectToken("usage.total_tokens").ToObject<int>())" remaining-calls-variable-name="globalRemainingTokens" remaining-calls-header-name="globalRemainingTokens" total-calls-header-name="globalTotalTokens" />
 		<choose>
-			<when condition="@(context.Subscription.Name == "batch-process")">
-				<!-- Rate limit by TPM -->
-				<rate-limit-by-key calls="500" renewal-period="60" counter-key="@(String.Concat(context.Subscription.Id,"TPM"))" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" increment-count="@(context.Response.Body.As<JObject>(true).SelectToken("usage.total_tokens").ToObject<int>())" remaining-calls-header-name="remainingTPM" total-calls-header-name="totalTPM" />
-				<!-- Rate limit by RPM -->
-				<rate-limit-by-key calls="3" renewal-period="60" counter-key="@(String.Concat(context.Subscription.Id,"RPM"))" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" remaining-calls-header-name="remainingRPM" total-calls-header-name="totalRPM" />
-				<set-variable name="BusinessUnitName" value="DSOfflineApp" />
-				<quota-by-key calls="100" renewal-period="300" counter-key="@(context.Subscription.Id)" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" />
+			<when condition="@(context.Subscription.Name == "usecase-1")">
+				<!-- Adaptive token rate limit -->
+				<!-- If a request lands here, then this usecase will be allocated additional tokens from the global token bucket -->
+                <rate-limit-by-key calls="@{
+                var defaultTokens = 1000;
+                if (context.Variables["globalRemainingTokens"] is int globalRemainingTokens && globalRemainingTokens > 0)
+                {
+                    defaultTokens += (int)(globalRemainingTokens * 0.1); // + allocate additional 10% of remaining global limit
+                }
+                return defaultTokens;
+                }" renewal-period="60" counter-key="usecase1key" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" increment-count="@(context.Response.Body.As<JObject>(true).SelectToken("usage.total_tokens").ToObject<int>())" remaining-calls-variable-name="remainingTokensUsecase1" remaining-calls-header-name="remainingTokensUsecase1" total-calls-header-name="totalTokensUseCase1" />
+				<set-variable name="BusinessUnitName" value="usecase-1" />
+			</when>
+			<when condition="@(context.Subscription.Name == "usecase-2")">
+				<!-- Adaptive token rate limit -->
+                <rate-limit-by-key calls="@{
+                var defaultTokens = 500;
+                if (context.Variables["globalRemainingTokens"] is int globalRemainingTokens && globalRemainingTokens > 0)
+                {
+                    defaultTokens += (int)(globalRemainingTokens * 0.1); // + allocate additional 10% of remaining global limit
+                }
+                return defaultTokens;
+                }" renewal-period="60" counter-key="usecase2key" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" increment-count="@(context.Response.Body.As<JObject>(true).SelectToken("usage.total_tokens").ToObject<int>())" remaining-calls-variable-name="remainingTokensUsecase2" remaining-calls-header-name="remainingTokensUsecase2" total-calls-header-name="totalTokensUseCase2" />
+				<set-variable name="BusinessUnitName" value="usecase-2" />
 			</when>
 			<otherwise>
+				<!-- Fixed rate limit for Tokens -->
 				<rate-limit-by-key calls="5" renewal-period="60" counter-key="@(context.Subscription.Id)" />
-				<set-variable name="BusinessUnitName" value="OtherSmallProducts" />
-				<quota-by-key calls="100" renewal-period="3600" counter-key="@(context.Subscription.Id)" increment-condition="@(context.Response.StatusCode >= 200 && context.Response.StatusCode < 400)" />
+				<set-variable name="BusinessUnitName" value="other-usecases" />
 			</otherwise>
 		</choose>
 	</inbound>
@@ -37,11 +46,6 @@
 	</backend>
 	<outbound>
 		<base />
-		<!--Setting Response Headers:
-			Appends a header named "x-gateway-id" with the value from the context's deployment gateway ID.-->
-		<set-header name="x-gateway-id" exists-action="append">
-			<value>@(context.Deployment.Gateway.Id)</value>
-		</set-header>
 		<choose>
 			<!--Chargeback model using eventhub logging 
 				Conditional Logging to EventHub:

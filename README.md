@@ -11,6 +11,7 @@ These samples focus on providing a head start for implementing key aspects as me
 3. **Priority Management Based on Subscription Keys and Quota Allocation:** Controlling access and resources allocation based on subscription priority.
 4. **Event Hub Logging:** Logging events for monitoring and analytics.
 5. **Circuit Breaker:** Temporarily halting subsequent requests upon error.
+5. **Adaptive Token Rate Limiting:** Adjusts the distribution of tokens based on the current demand of each consumer.
 
 ## Scope and Structure
 
@@ -22,3 +23,4 @@ These policies are implemented at both the product and API levels, catering to s
 - **Chatbot:** Assigned a high-priority status due to the expectation of a high request volume per minute.
 - **BatchProcessor:** Identified as a low-priority product with a lower request per minute (RPM) count.
 - **SimpleCircuitBreaker:** Demonstrates a simple circuit breaker pattern.
+- **AdaptiveRateLimit:** Demonstrates a dynamic rate limiting strategy that adjusts token distribution from a global token bucket based on the varying demand of the consumers.
