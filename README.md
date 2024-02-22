@@ -23,5 +23,7 @@ These policies are implemented at both the product and API levels, catering to s
 - **Chatbot:** Assigned a high-priority status due to the expectation of a high request volume per minute.
 - **BatchProcessor:** Identified as a low-priority product with a lower request per minute (RPM) count.
 - **SimpleCircuitBreaker:** Demonstrates a simple circuit breaker pattern.
+- **AdaptiveRateLimiting:** Demonstrates a dynamic rate limiting strategy that adjusts token distribution from a global token bucket based on the varying demand of the consumers.
+
 
 Note* - The rate limiting policy is not applied when the response is consumed within the inbound process. For the rate limit policy to be effective, the response has to be consumed in the outbound process. 
