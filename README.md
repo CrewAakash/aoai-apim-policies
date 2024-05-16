@@ -1,3 +1,6 @@
+> [!CAUTION]
+> This repo isn't being maintained anymore. Switch to this repo https://github.com/Azure-Samples/apim-genai-gateway-toolkit for the latest policies and developments
+
 # Azure OpenAI APIM Policies
 
 The repository includes a collection of Azure API Management (APIM) policy samples aiming for improving interactions with Azure OpenAI Service.
